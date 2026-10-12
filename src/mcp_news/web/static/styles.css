@@ -1,48 +1,52 @@
 
+    /* Палитра в стиле OmniTask (mcp-todo): тёмно-синий фон, белые карточки,
+       голубой акцент. По умолчанию — тёмная тема. */
     :root {
-      /* Тёмная тема — значения по умолчанию */
       color-scheme: dark;
-      --bg: #0f1217;
-      --surface: #171b22;
-      --surface-2: #1e232c;
-      --input-bg: #0e1116;
-      --code-bg: #0e1116;
-      --text: #e8edf4;
-      --text-muted: #9aa7b8;
-      --text-inverse: #eef2f7;
-      --border: #2a313c;
-      --border-strong: #3a4452;
-      --accent: #5b9bff;
-      --accent2: #8b6bff;
+      --bg: #22384d;
+      --surface: #2c4459;
+      --surface-2: #324c63;
+      --input-bg: #263c50;
+      --code-bg: #263c50;
+      --text: #eaf0f6;
+      --text-muted: #9fb3c6;
+      --text-inverse: #ffffff;
+      --border: #3d566d;
+      --border-strong: #4d6780;
+      --accent: #38bdf8;
+      --accent2: #7dd3fc;
       --tg: #36b3f0;
       --rss: #ff8a4c;
       --danger: #ff6b78;
-      --thumb-bg: #2b3340;
-      --shadow: 0 12px 34px rgba(0,0,0,.40);
+      --thumb-bg: #7dd3fc;
+      --header-bg: #1c3145;
+      --shadow: 0 12px 34px rgba(0,0,0,.30);
       --radius: 16px;
       --radius-sm: 12px;
-      --grad: linear-gradient(90deg, #5b9bff, #8b6bff);
+      --grad: #0ea5e9;
     }
-    /* Светлая тема — переопределяет переменные */
+    /* Светлая тема — каноничный вид OmniTask:
+       фон #35506b, белые скруглённые карточки, шапка #22384d. */
     html.light {
       color-scheme: light;
-      --bg: #f4f7fb;
+      --bg: #35506b;
       --surface: #ffffff;
-      --surface-2: #eef2f8;
-      --input-bg: #f0f3f8;
-      --code-bg: #eef2f8;
-      --text: #1b2230;
-      --text-muted: #5d6b7d;
+      --surface-2: #ffffff;
+      --input-bg: #f1f5f9;
+      --code-bg: #f1f5f9;
+      --text: #1e293b;
+      --text-muted: #64748b;
       --text-inverse: #ffffff;
-      --border: #e3e9f0;
-      --border-strong: #cfd8e3;
-      --accent: #3b82f6;
-      --accent2: #7c5bff;
+      --border: #dbe4ee;
+      --border-strong: #c3d0de;
+      --accent: #0ea5e9;
+      --accent2: #0284c7;
       --tg: #1f9fe0;
       --rss: #f2742f;
       --danger: #e2483b;
-      --thumb-bg: #d6f2e5;
-      --shadow: 0 12px 34px rgba(30,60,90,.10);
+      --thumb-bg: #7dd3fc;
+      --header-bg: #22384d;
+      --shadow: 0 6px 20px rgba(20,40,60,.18);
     }
 
     * { box-sizing: border-box; }
@@ -51,9 +55,7 @@
       margin: 0;
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "PT Sans", sans-serif;
       font-size: 15px;
-      background:
-        radial-gradient(1200px 600px at 50% -12%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 60%),
-        var(--bg);
+      background: var(--bg);
       color: var(--text);
       line-height: 1.6;
       overflow-x: hidden;
@@ -61,28 +63,28 @@
     }
 
     /* ----- Шапка (липкая) ----- */
+    /* Шапка — всегда тёмно-синяя (#22384d), как в OmniTask */
     .header-bar {
       position: sticky; top: 0; z-index: 100;
       display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 16px;
       max-width: 920px; margin: 0 auto; padding: 12px 18px;
-      background: var(--surface);
-      background: color-mix(in srgb, var(--surface) 88%, transparent);
-      backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-      border-bottom: 1px solid var(--border);
+      background: var(--header-bg);
+      box-shadow: 0 2px 10px rgba(0,0,0,.25);
     }
     .brand { justify-self: start; display: flex;
       align-items: center; gap: 10px; min-width: 0; }
-    .brand h1 { margin: 0; font-size: 22px; letter-spacing: .3px;
-      background: var(--grad); -webkit-background-clip: text; background-clip: text; color: transparent; }
+    .brand h1 { margin: 0; font-size: 20px; font-weight: 800; letter-spacing: .08em;
+      text-transform: uppercase; color: #fff; }
+    .brand h1 .brand-accent { color: #7dd3fc; }
     .tabs { justify-self: center; display: inline-flex; gap: 4px; padding: 4px; border-radius: 999px;
-      background: var(--surface-2); border: 1px solid var(--border); }
-    .tab { background: transparent; border: 0; color: var(--text-muted); padding: 8px 20px;
+      background: rgba(255,255,255,.10); }
+    .tab { background: transparent; border: 0; color: rgba(255,255,255,.75); padding: 8px 20px;
       border-radius: 999px; font-size: 14px; font-weight: 600; cursor: pointer; transition: .2s; }
-    .tab:hover { color: var(--text); }
-    .tab.active { color: #fff; background: var(--grad); box-shadow: 0 2px 10px rgba(91,155,255,.30); }
+    .tab:hover { color: #fff; }
+    .tab.active { color: #22384d; background: #fff; box-shadow: 0 2px 10px rgba(0,0,0,.25); }
 
     .subwrap { max-width: 860px; margin: 0 auto; padding: 18px 16px 0; text-align: center; }
-    .sub { color: var(--text-muted); margin: 0; font-size: 14px; }
+    .sub { color: rgba(255,255,255,.75); margin: 0; font-size: 14px; }
 
     /* ----- Переключатель темы ----- */
     .theme-switch { position: relative; display: inline-block; width: 58px; height: 32px;
@@ -94,12 +96,14 @@
     .toggle-thumb { position: absolute; top: 50%; left: 3px; width: 24px; height: 24px;
       transform: translateY(-50%); display: flex;
       align-items: center; justify-content: center;
-      border-radius: 999px; background: var(--thumb-bg); color: var(--text-inverse);
+      border-radius: 999px; background: var(--thumb-bg); color: #22384d;
       font-size: 14px; line-height: 1; transition: left .3s cubic-bezier(.4,0,.2,1),
         background .25s ease, color .25s ease; }
     .theme-switch input:checked + .toggle-track .toggle-thumb {
-      left: 31px; background: #2b3340; color: var(--text-inverse);
+      left: 31px; background: rgba(255,255,255,.25); color: #fff;
     }
+    .theme-switch .toggle-track { background: rgba(255,255,255,.12);
+      border-color: rgba(255,255,255,.25); }
 
     /* Переключатель ИИ-классификатора */
     .ai-toggle { position: relative; display: inline-block; width: 46px; height: 26px;
@@ -180,9 +184,9 @@
     input::placeholder { color: var(--text-muted); }
     input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 22%, transparent); }
 
-    button { background: var(--grad); color: #fff; border: 0;
+    button { background: var(--accent); color: #fff; border: 0;
       padding: 11px 18px; border-radius: 11px; font-size: 14px; font-weight: 600; cursor: pointer;
-      transition: .15s; box-shadow: 0 2px 12px rgba(91,155,255,.22); }
+      transition: .15s; box-shadow: 0 2px 12px rgba(14,165,233,.25); }
     button:hover { filter: brightness(1.08); transform: translateY(-1px); }
     button:active { transform: translateY(0); }
     button.ghost { background: transparent; border: 1px solid var(--border); color: var(--text-muted);
@@ -210,10 +214,11 @@
       text-overflow: ellipsis; color: var(--text-muted); font-size: 12px; text-decoration: none; }
     .src .url:hover { color: var(--accent); }
 
+    /* Бейджи и чипы — цветная подложка с белым полужирным текстом (как в OmniTask) */
     .badge { font-size: 11px; padding: 3px 9px; border-radius: 999px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .4px; }
-    .badge.telegram { background: color-mix(in srgb, var(--tg) 16%, transparent); color: var(--tg); }
-    .badge.rss { background: color-mix(in srgb, var(--rss) 16%, transparent); color: var(--rss); }
+      text-transform: uppercase; letter-spacing: .4px; color: #fff; }
+    .badge.telegram { background: var(--tg); }
+    .badge.rss { background: var(--rss); }
 
     .feed-filters { display: flex;
       align-items: center; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
@@ -221,8 +226,8 @@
       padding: 7px 16px; border-radius: 999px; font-size: 13px; font-weight: 600; cursor: pointer;
       transition: .15s; box-shadow: none; }
     .chip:hover { color: var(--text); border-color: var(--border-strong); }
-    .chip.active { color: #fff; background: var(--grad); border-color: transparent;
-      box-shadow: 0 2px 10px rgba(91,155,255,.30); }
+    .chip.active { color: #fff; background: var(--accent); border-color: transparent;
+      box-shadow: 0 2px 10px rgba(14,165,233,.30); }
 
     .posts { display: grid; gap: 12px; }
     .post { border: 1px solid var(--border); border-radius: 13px; padding: 14px 16px;
@@ -291,9 +296,9 @@
       align-items: center; gap: 8px; flex-wrap: wrap; }
 
     .mode-badge { font-size: 11px; padding: 2px 9px; border-radius: 999px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: .3px; }
-    .mode-badge.tag { background: color-mix(in srgb, var(--accent) 16%, transparent); color: var(--accent); }
-    .mode-badge.manual { background: color-mix(in srgb, var(--rss) 16%, transparent); color: var(--rss); }
+      text-transform: uppercase; letter-spacing: .3px; color: #fff; }
+    .mode-badge.tag { background: var(--accent); }
+    .mode-badge.manual { background: var(--rss); }
 
     /* Кнопка «＋» на посте ленты — добавить в тему */
     .posthead .addbtn { margin-left: auto; background: transparent; border: 1px solid var(--border);
@@ -328,10 +333,9 @@
     /* Теги пользователя (темы) внизу карточки поста */
     .post-tags { display: flex;
       align-items: center; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-    .usertag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 600;
-      padding: 2px 9px; border-radius: 999px; color: var(--accent2);
-      background: color-mix(in srgb, var(--accent2) 14%, transparent);
-      border: 1px solid color-mix(in srgb, var(--accent2) 30%, transparent); }
+    .usertag { display: inline-flex; align-items: center; font-size: 11px; font-weight: 700;
+      padding: 2px 9px; border-radius: 999px; color: #fff;
+      background: var(--accent2); border: 1px solid transparent; }
 
     /* Фильтр по тегу в шапке ленты — одна строка вместе с чипами */
     .feed-filters { align-items: center; }
@@ -400,8 +404,7 @@
     .editortag.done { color: var(--accent2); border-color: color-mix(in srgb, var(--accent2) 40%, var(--border));
       background: color-mix(in srgb, var(--accent2) 12%, transparent); }
     /* «Светится» — активная редакция показывается */
-    .editortag.lit { color: #fff; border-color: transparent;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+    .editortag.lit { color: #fff; border-color: transparent; background: var(--accent);
       box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent) 40%, transparent),
                   0 0 12px color-mix(in srgb, var(--accent) 45%, transparent); }
     .addmenu-item.danger { color: var(--danger); }
