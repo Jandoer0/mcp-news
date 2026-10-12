@@ -33,7 +33,7 @@ jobs:
 
       - name: Run tests
         run: |
-          pip install -q -e . pytest ruff
+          pip install -q -e .[dev]
           ruff check src tests
           pytest -q
 

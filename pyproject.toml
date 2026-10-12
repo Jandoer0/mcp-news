@@ -19,6 +19,13 @@ dependencies = [
 [project.scripts]
 mcp-news = "mcp_news.cli:main"
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "respx>=0.21",
+    "ruff>=0.16",
+]
+
 [build-system]
 requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
