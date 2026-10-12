@@ -5,9 +5,7 @@
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
-
-from mcp.server.mcpserver import MCPServer
+from datetime import UTC, datetime, timedelta
 
 from .. import ingest
 from ..db import (
@@ -19,8 +17,7 @@ from ..db import (
     remove_source,
 )
 from ..ingest import rss
-from ..topics import agent, service
-
+from ..topics import service
 from .server import mcp
 
 RSSHUB_BASE_URL = "https://rsshub.app"
@@ -171,7 +168,7 @@ def query_posts(sources: list[str] | None = None, days: int = 1) -> str:
     if not target:
         return "Нет подписок. Сначала добавьте канал или ленту."
 
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+    cutoff = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
 
     for src in target:
         ingest.refresh.refresh_source(src, days)

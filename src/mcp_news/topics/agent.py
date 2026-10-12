@@ -13,7 +13,6 @@ import logging
 import os
 import re
 import threading
-from typing import Optional
 
 from ..config import load_config
 from ..db import (
@@ -45,9 +44,9 @@ AGENT_MAX_BATCHES = int(os.environ.get("AGENT_MAX_BATCHES", "20"))
 def _chat(
     messages: list[dict],
     temperature: float = 0.0,
-    model: Optional[str] = None,
+    model: str | None = None,
     abortable: bool = True,
-) -> Optional[str]:
+) -> str | None:
     """Один вызов chat/completions для классификатора. Возвращает текст или None.
 
     Использует единую для обеих ролей логику :func:`provider.call_role`:
@@ -64,7 +63,7 @@ def _chat(
     return result.content if result.ok else None
 
 
-def _extract_json(text: str) -> Optional[dict]:
+def _extract_json(text: str) -> dict | None:
     """Извлечь JSON-объект из ответа модели (с учётом markdown-обёрток)."""
     if not text:
         return None
@@ -122,7 +121,7 @@ def _build_messages(topic: dict, posts: list[dict]) -> list[dict]:
 
 
 def match_topic_posts(
-    topic: dict, posts: list[dict], content: Optional[str] = None
+    topic: dict, posts: list[dict], content: str | None = None
 ) -> list[int]:
     """Вернуть 1-based индексы постов, относящихся к теме."""
     if not posts:
@@ -149,9 +148,9 @@ def match_topic_posts(
 
 
 def run_topic_agent(
-    topic: Optional[dict] = None,
-    topic_id: Optional[int] = None,
-    topic_name: Optional[str] = None,
+    topic: dict | None = None,
+    topic_id: int | None = None,
+    topic_name: str | None = None,
     max_batches: int = AGENT_MAX_BATCHES,
 ) -> dict:
     """Один прогон агента для темы.
@@ -231,7 +230,7 @@ def run_topic_agent(
 
 
 def run_topic_agent_async(
-    topic_id: Optional[int] = None, topic_name: Optional[str] = None
+    topic_id: int | None = None, topic_name: str | None = None
 ) -> None:
     """Запустить прогон агента в фоновом потоке (не блокирует ответ HTTP)."""
 

@@ -95,10 +95,10 @@ def test_timeout_no_retry():
     with respx.mock:
         # Любой запрос вызывает Timeout (через side_effect httpx.ReadTimeout)
         respx.post(EDITOR_URL).mock(side_effect=httpx.ReadTimeout("request timed out"))
-        
+
         # Вызываем роль (по умолчанию 3 попытки в provider.py)
         result = provider.call_role("editor", [{"role": "user", "content": "test"}])
-        
+
         # Должна быть только ОДНА попытка
         assert result.attempts == 1
         assert not result.ok

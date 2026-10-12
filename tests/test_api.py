@@ -38,3 +38,15 @@ def test_config(client):
     r = client.get("/api/config")
     assert r.status_code == 200
     assert "providers" in r.json()
+
+
+def test_posts_state_combined(client):
+    """Единый эндпоинт состояния: editor + tags одним ответом."""
+    # Источник + пост
+    client.post("/api/sources", json={"kind": "telegram", "name": "durov"})
+    posts = client.get("/api/posts").json()["posts"]
+    assert posts == []  # лента пуста — эндпоинт просто отвечает структурой
+    r = client.get("/api/posts/state?ids=1,2,3")
+    assert r.status_code == 200
+    data = r.json()
+    assert set(data.keys()) == {"editor", "tags"}

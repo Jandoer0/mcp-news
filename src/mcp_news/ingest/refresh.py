@@ -6,7 +6,7 @@
 """
 from __future__ import annotations
 
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
 
 from ..db import get_oldest_post_date, save_posts
 from . import rss, telegram
@@ -46,7 +46,7 @@ def refresh_rss(source: dict) -> None:
 
 def refresh_source(source: dict, days: int = 1) -> bool:
     """Обновить один источник. Возвращает True при успехе."""
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+    cutoff = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
     try:
         if source["kind"] == "telegram":
             refresh_telegram(source, cutoff)
@@ -61,7 +61,7 @@ def refresh_all_sources(days: int = 1, kind: str = "") -> dict:
     """Подтянуть свежие посты по всем (или выбранного типа) источникам."""
     from ..db import list_sources_with_id
 
-    cutoff = (datetime.now(timezone.utc) - timedelta(days=days)).strftime("%Y-%m-%d")
+    cutoff = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
     sources = list_sources_with_id(kind) if kind else list_sources_with_id()
     ok, failed = 0, 0
     for src in sources:

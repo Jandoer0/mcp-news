@@ -1,8 +1,6 @@
 """Репозиторий постов (posts): кеш общей ленты и ротация по лимиту."""
 from __future__ import annotations
 
-from typing import Optional
-
 from ..connection import get_conn, rotate_if_needed
 
 
@@ -15,7 +13,7 @@ def save_posts(source_id: int, posts: list[dict]) -> None:
             "SELECT 1 FROM posts WHERE source_id = ? AND text = ? LIMIT 1",
             (source_id, post["text"]),
         ).fetchone()
-        
+
         if exists:
             continue
 
@@ -29,7 +27,7 @@ def save_posts(source_id: int, posts: list[dict]) -> None:
     rotate_if_needed()
 
 
-def get_oldest_post_date(source_id: int) -> Optional[str]:
+def get_oldest_post_date(source_id: int) -> str | None:
     conn = get_conn()
     row = conn.execute(
         "SELECT MIN(date) as min_date FROM posts WHERE source_id = ?", (source_id,)
@@ -49,16 +47,16 @@ def get_posts(source_ids: list[int], since_date: str, limit: int = 50, offset: i
     offset = max(0, int(offset))
     conn = get_conn()
     n = len(source_ids)
-    placeholders = ",".join(["?"] * n)
-    sql = """
+    placeholders = ",".join("?" * n)
+    sql = f"""
         SELECT p.id, s.name AS source, s.kind, p.ext_id, p.text, p.date, p.url,
                p.text_edited, p.editor_status, p.editor_active
         FROM posts p JOIN sources s ON s.id = p.source_id
-        WHERE s.id IN (%s)
+        WHERE s.id IN ({placeholders})
           AND p.date >= ?
         ORDER BY p.date DESC, p.id DESC
         LIMIT ? OFFSET ?
-    """ % placeholders
+    """
     rows = conn.execute(sql, (*source_ids, since_date, limit, offset)).fetchall()
     conn.close()
     return [dict(r) for r in rows]
@@ -139,7 +137,7 @@ def get_posts_by_tags(tags: list[str], limit: int = 50, offset: int = 0) -> list
     return [dict(r) for r in rows]
 
 
-def get_post(post_id: int) -> Optional[dict]:
+def get_post(post_id: int) -> dict | None:
     """Один пост по id (с полями ИИ-редактора)."""
     conn = get_conn()
     row = conn.execute(

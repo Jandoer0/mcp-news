@@ -1,16 +1,14 @@
 """Репозиторий подписок (sources): Telegram-каналы и RSS/RSSHub-ленты."""
 from __future__ import annotations
 
-from typing import Optional
-
-from ..connection import get_conn, rotate_if_needed
+from ..connection import get_conn
 
 
 def _norm(name: str) -> str:
     return name.strip().lower().lstrip("@")
 
 
-def add_source(kind: str, name: str, url: Optional[str] = None) -> dict:
+def add_source(kind: str, name: str, url: str | None = None) -> dict:
     name = _norm(name)
     conn = get_conn()
     conn.execute(
@@ -40,7 +38,7 @@ def remove_source(name: str) -> bool:
     return True
 
 
-def list_sources(kind: Optional[str] = None) -> list[dict]:
+def list_sources(kind: str | None = None) -> list[dict]:
     conn = get_conn()
     if kind:
         rows = conn.execute(
@@ -55,7 +53,7 @@ def list_sources(kind: Optional[str] = None) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def list_sources_with_id(kind: Optional[str] = None) -> list[dict]:
+def list_sources_with_id(kind: str | None = None) -> list[dict]:
     """Подписки с id — нужно для пересборки постов (refresh)."""
     conn = get_conn()
     sql = "SELECT id, kind, name, url, added_at FROM sources ORDER BY name"
@@ -68,7 +66,7 @@ def list_sources_with_id(kind: Optional[str] = None) -> list[dict]:
     return [dict(r) for r in rows]
 
 
-def get_source(name: str) -> Optional[dict]:
+def get_source(name: str) -> dict | None:
     name = _norm(name)
     conn = get_conn()
     row = conn.execute(
@@ -97,5 +95,5 @@ def list_channels() -> list[dict]:
     return list_sources("telegram")
 
 
-def get_channel(channelname: str) -> Optional[dict]:
+def get_channel(channelname: str) -> dict | None:
     return get_source(channelname)

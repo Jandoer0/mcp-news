@@ -106,7 +106,7 @@ class AppConfig(BaseModel):
 
     # Полные настройки классификатора
     classifier: ClassifierConfig = Field(default_factory=ClassifierConfig)
-    
+
     # Полные настройки редактора (симметрично классификатору)
     editor: EditorConfig = Field(default_factory=EditorConfig)
 
@@ -119,7 +119,7 @@ class AppConfig(BaseModel):
     # Системный промпт ИИ-редактора (редактируется в интерфейсе).
     editor_system_prompt: str = EDITOR_SYSTEM_PROMPT_DEFAULT
     schedule: ScheduleConfig = Field(default_factory=ScheduleConfig)
-    # Глобальные провайдеры больше не нужны как единственный источник истины, 
+    # Глобальные провайдеры больше не нужны как единственный источник истины,
     # но оставим для совместимости с API списка моделей.
     providers: dict[str, ProviderConfig] = Field(default_factory=dict)
 
@@ -127,7 +127,7 @@ class AppConfig(BaseModel):
     def to_legacy_dict(self) -> dict:
         """Словарь в форме, совместимой с веб-интерфейсом."""
         d = self.model_dump()
-        
+
         def prov_to_dict(p):
             compat = p["compat"]
             return {
@@ -178,11 +178,12 @@ class AppConfig(BaseModel):
         }
 
     @classmethod
-    def from_legacy_dict(cls, data: dict) -> "AppConfig":
+    def from_legacy_dict(cls, data: dict) -> AppConfig:
         """Собрать модель из словаря config.json."""
-        
+
         def dict_to_prov(p):
-            if not p: return ProviderConfig()
+            if not p:
+                return ProviderConfig()
             compat = (p or {}).get("compat") or {}
             return ProviderConfig(
                 base_url=p.get("baseUrl", "http://host.containers.internal:11434/v1"),
@@ -198,10 +199,10 @@ class AppConfig(BaseModel):
         providers = {}
         for name, p in (data.get("providers") or {}).items():
             providers[name] = dict_to_prov(p)
-        
+
         classifier_data = data.get("classifier") or {}
         editor_data = data.get("editor") or {}
-        
+
         # Обработка классификатора (поддержка старой и новой структуры)
         if "provider" in classifier_data:
             # Новая структура с вложенным provider
@@ -224,7 +225,7 @@ class AppConfig(BaseModel):
             e_provider = dict_to_prov(editor_data)
             e_model = data.get("editor_model", editor_data.get("model", "qwen3:4b"))
         editor_cfg = EditorConfig(provider=e_provider, model=e_model)
-        
+
         sched = data.get("schedule") or {}
         return cls(
             classifier=classifier_cfg,
@@ -259,26 +260,59 @@ DEFAULT_PROVIDERS = {
 }
 
 
+# Кэш собранного конфига: перечитываем config.json только когда файл
+# изменился (по mtime+size). config.json меняется редко (ручное сохранение
+# из UI), а load_config() вызывается перед каждым постом батча и каждым
+# тиком планировщика — кэш убирает лишнее чтение диска и парсинг.
+_config_cache: tuple[tuple, AppConfig] | None = None
+
+
 def load_config() -> AppConfig:
     """Собрать конфиг: дефолт -> config.json -> переменные окружения.
-    
-    Приоритет: ENV > config.json > Default.
+
+    Приоритет: ENV > config.json > Default. Результат кэшируется по
+    (путь, mtime, size) — файл перечитывается только после изменения.
     """
+    global _config_cache
+    # В ключ кэша входят и env-оверрайды: AGENT_* могут меняться
+    # независимо от файла (тесты, рестарт с новыми env).
+    env_key = tuple(
+        os.environ.get(k)
+        for k in (
+            "AGENT_CONFIG", "AGENT_CLASSIFIER_URL", "AGENT_CLASSIFIER_KEY",
+            "AGENT_CLASSIFIER_MODEL", "AGENT_EDITOR_URL", "AGENT_EDITOR_KEY",
+            "AGENT_EDITOR_MODEL", "AGENT_TIMEZONE", "AGENT_SCHEDULE_ENABLED",
+            "AGENT_FEED_REFRESH_MINUTES", "AGENT_TOPIC_MINUTES",
+        )
+    )
+    # Ключ — хэш содержимого файла: надёжнее mtime (гранулярность ФС может
+    # быть ~1 с, два сохранения подряд давали бы устаревший конфиг).
+    # Чтение маленького json дешево; кэш экономит парсинг pydantic-модели.
+    raw = b""
+    try:
+        with open(CONFIG_PATH, "rb") as f:
+            raw = f.read()
+        cache_key = (hash(raw), env_key)
+    except OSError:
+        cache_key = (None, env_key)
+    if _config_cache is not None and _config_cache[0] == cache_key:
+        return _config_cache[1]
+
     # 1. Начинаем с дефолтов
     cfg = AppConfig()
-    
-    # 2. Накладываем config.json, если он есть
-    try:
-        with open(CONFIG_PATH, "r", encoding="utf-8") as f:
-            user = json.load(f)
-        if isinstance(user, dict):
-            # from_legacy_dict уже применил дефолты к значениям из файла —
-            # используем результат как итоговый конфиг.
-            cfg = AppConfig.from_legacy_dict(user)
-    except FileNotFoundError:
+
+    # 2. Накладываем config.json, если он есть (raw уже прочитан выше)
+    if raw:
+        try:
+            user = json.loads(raw)
+            if isinstance(user, dict):
+                # from_legacy_dict уже применил дефолты к значениям из файла —
+                # используем результат как итоговый конфиг.
+                cfg = AppConfig.from_legacy_dict(user)
+        except Exception as e:
+            logger.warning("Не удалось прочитать config.json: %s", e)
+    else:
         logger.info("config.json не найден, используются значения по умолчанию")
-    except Exception as e:
-        logger.warning("Не удалось прочитать config.json: %s", e)
 
     # 3. Переопределяем через переменные окружения (самый высокий приоритет)
     # Классификатор
@@ -288,7 +322,7 @@ def load_config() -> AppConfig:
         cfg.classifier.provider.api_key = os.environ["AGENT_CLASSIFIER_KEY"]
     if os.environ.get("AGENT_CLASSIFIER_MODEL"):
         cfg.classifier.model = os.environ["AGENT_CLASSIFIER_MODEL"]
-    
+
     # Редактор (своя конфигурация провайдера/модели — как у классификатора)
     if os.environ.get("AGENT_EDITOR_URL"):
         cfg.editor.provider.base_url = os.environ["AGENT_EDITOR_URL"]
@@ -304,26 +338,27 @@ def load_config() -> AppConfig:
     env_enabled = os.environ.get("AGENT_SCHEDULE_ENABLED")
     if env_enabled is not None:
         sched.enabled = env_enabled.strip().lower() in ("1", "true", "yes", "on")
-    
+
     if os.environ.get("AGENT_FEED_REFRESH_MINUTES"):
         try:
             sched.feed_refresh_minutes = max(1, int(os.environ["AGENT_FEED_REFRESH_MINUTES"]))
         except ValueError:
             pass
-            
+
     if os.environ.get("AGENT_TOPIC_MINUTES"):
         try:
             sched.topic_minutes = max(1, int(os.environ["AGENT_TOPIC_MINUTES"]))
         except ValueError:
             pass
 
+    _config_cache = (cache_key, cfg)
     return cfg
 
 
 def get_provider(cfg: AppConfig | None = None, provider_name: str | None = None) -> ProviderConfig:
     """Получить конфигурацию провайдера.
     Если provider_name == 'classifier', возвращаем настройки классификатора.
-    Если 'editor' — редактора. 
+    Если 'editor' — редактора.
     Если None — по умолчанию классификатора.
     """
     cfg = cfg or load_config()

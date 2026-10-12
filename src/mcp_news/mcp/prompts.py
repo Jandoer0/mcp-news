@@ -11,8 +11,7 @@ from mcp.types import (
     TextResourceContents,
 )
 
-from ..db import get_source, list_sources
-
+from ..db import list_sources
 from .resources import channels_resource
 from .server import mcp
 

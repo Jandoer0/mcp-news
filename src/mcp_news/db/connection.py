@@ -12,9 +12,8 @@ from __future__ import annotations
 
 import logging
 import os
-from pathlib import Path
-
 import sqlite3
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
@@ -28,16 +27,19 @@ MIGRATIONS_DIR = Path(__file__).parent / "migrations"
 
 
 def get_conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH, timeout=10.0)
     conn.row_factory = sqlite3.Row
     # Включаем внешние ключи: схема описывает ON DELETE CASCADE, поэтому
     # удаление источника/темы/поста корректно тянет за собой зависимости.
     conn.execute("PRAGMA foreign_keys=ON")
-    # Обычный rollback-журнал (а не WAL): при VACUUM физический размер
-    # файла сразу уменьшается, и os.path.getsize(DB_PATH) — это точный
-    # размер базы. WAL-режим держит данные в -wal файле и не сжимает
-    # main-файл после VACUUM без явного checkpoint, что ломает ротацию.
-    conn.execute("PRAGMA journal_mode=DELETE")
+    # Ждём блокировку вместо мгновенного "database is locked": сервер
+    # многопоточный (веб + планировщик + пул агента + редактор).
+    conn.execute("PRAGMA busy_timeout=5000")
+    # WAL: параллельное чтение (веб) не блокируется записью (лента/агент).
+    # Размер файла для ротации меряем после checkpoint TRUNCATE (см. ниже),
+    # поэтому точность лимита сохраняется.
+    conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
     return conn
 
 
@@ -77,7 +79,7 @@ def run_migrations(conn: sqlite3.Connection | None = None) -> None:
             if version in applied:
                 continue
             logger.info("Применяется миграция %s", path.name)
-            with open(path, "r", encoding="utf-8") as f:
+            with open(path, encoding="utf-8") as f:
                 conn.executescript(f.read())
             conn.execute("INSERT INTO schema_version (version) VALUES (?)", (version,))
             conn.commit()
@@ -95,11 +97,20 @@ def init_db() -> None:
 # Ротация базы по лимиту размера
 # --------------------------------------------------------------------------- #
 def _get_db_size() -> int:
-    """Физический размер файла базы на диске (в байтах).
+    """Физический размер базы на диске (main + wal после checkpoint).
 
-    В режиме journal_mode=DELETE это точный размер данных — VACUUM
-    сразу уменьшает файл, поэтому метрика надёжна для лимита.
+    WAL-режим держит данные в ``-wal``; перед замером выполняем
+    ``wal_checkpoint(TRUNCATE)``, чтобы размер файла отражал реальные
+    данные и лимит ротации оставался точным.
     """
+    try:
+        conn = get_conn()
+        try:
+            conn.execute("PRAGMA wal_checkpoint(TRUNCATE)")
+        finally:
+            conn.close()
+    except Exception:
+        pass
     try:
         return os.path.getsize(DB_PATH)
     except Exception:

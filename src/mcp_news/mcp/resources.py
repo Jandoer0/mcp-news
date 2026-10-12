@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from ..db import get_posts, get_source, list_sources
-
 from .server import mcp
 
 

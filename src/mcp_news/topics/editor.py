@@ -10,8 +10,9 @@ from __future__ import annotations
 import logging
 import os
 import threading
-from typing import Optional
+from datetime import UTC
 
+from ..config import load_config
 from ..db import (
     delete_post_edited,
     get_post,
@@ -20,7 +21,6 @@ from ..db import (
     set_post_edited,
     set_post_editor_status,
 )
-from ..config import load_config
 from .provider import call_role, last_provider_error
 
 logger = logging.getLogger(__name__)
@@ -31,7 +31,7 @@ EDITOR_BATCH = int(os.environ.get("EDITOR_BATCH", "10"))
 EDITOR_DAYS = int(os.environ.get("EDITOR_DAYS", "7"))
 
 
-def _edit_result(text: str, max_chars: int = 4000, model: Optional[str] = None):
+def _edit_result(text: str, max_chars: int = 4000, model: str | None = None):
     """Вызвать модель редактора через единую ролевую логику (call_role).
 
     Возвращает полный результат (в т.ч. флаг `aborted` — прерывание
@@ -56,7 +56,7 @@ def _edit_result(text: str, max_chars: int = 4000, model: Optional[str] = None):
     )
 
 
-def edit_text(text: str, max_chars: int = 4000, model: Optional[str] = None) -> Optional[str]:
+def edit_text(text: str, max_chars: int = 4000, model: str | None = None) -> str | None:
     """Прогнать текст поста через ИИ-редактора (роль 'editor').
 
     Возвращает отредактированный текст или None при недоступности модели.
@@ -71,7 +71,7 @@ def edit_text(text: str, max_chars: int = 4000, model: Optional[str] = None) -> 
     return result.content or None
 
 
-def last_editor_error() -> Optional[str]:
+def last_editor_error() -> str | None:
     """Последняя ошибка провайдера редактора (для уведомлений в UI).
 
     Тот же механизм, что у классификатора (:func:`provider.last_provider_error`).
@@ -150,7 +150,7 @@ def edit_post_async(post_id: int) -> None:
     threading.Thread(target=_t, name="editor-post", daemon=True).start()
 
 
-def run_editor_batch(days: Optional[int] = None, limit: Optional[int] = None) -> dict:
+def run_editor_batch(days: int | None = None, limit: int | None = None) -> dict:
     """Пакетная обработка постов за последние N дней (или все).
 
     Пропускает уже отредактированные (editor_status='done') и пустые посты.
@@ -161,7 +161,7 @@ def run_editor_batch(days: Optional[int] = None, limit: Optional[int] = None) ->
     if days and days > 0:
         from datetime import datetime, timedelta
 
-        since = (datetime.utcnow() - timedelta(days=days)).strftime("%Y-%m-%d")
+        since = (datetime.now(UTC) - timedelta(days=days)).strftime("%Y-%m-%d")
     srcs = list_sources()
     src_ids = [s["id"] for s in srcs]
     rows = get_posts(src_ids, since, limit=limit or 2000, offset=0)
@@ -170,7 +170,7 @@ def run_editor_batch(days: Optional[int] = None, limit: Optional[int] = None) ->
     edited = 0
     skipped = 0
     errors = 0
-    for i, p in enumerate(rows):
+    for p in rows:
         # Кооперативная остановка: проверяем переключатель перед КАЖДЫМ
         # постом (чтение config.json дешево на фоне минутных вызовов модели) —
         # выключение должно останавливать пакет сразу, а не через 5 постов.
@@ -205,7 +205,7 @@ def run_editor_batch(days: Optional[int] = None, limit: Optional[int] = None) ->
     }
 
 
-def run_editor_async(days: Optional[int] = None) -> None:
+def run_editor_async(days: int | None = None) -> None:
     """Запустить пакетную редактуру в фоновом потоке."""
 
     def _t() -> None:

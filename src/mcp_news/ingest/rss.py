@@ -7,8 +7,7 @@ RSSHub — это сервис, который умеет отдавать RSS �
 from __future__ import annotations
 
 import time
-from datetime import datetime, timezone
-from typing import Optional
+from datetime import UTC, datetime
 
 import feedparser
 import httpx
@@ -38,7 +37,7 @@ def _parse_date(entry: dict) -> str:
     for key in ("published_parsed", "updated_parsed"):
         val = entry.get(key)
         if isinstance(val, time.struct_time):
-            return datetime(*val[:6], tzinfo=timezone.utc).strftime("%Y-%m-%d")
+            return datetime(*val[:6], tzinfo=UTC).strftime("%Y-%m-%d")
     return ""
 
 

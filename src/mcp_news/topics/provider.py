@@ -8,12 +8,12 @@ provider/model в конфиге), но логика работы у них од
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
 import os
 import threading
 import time
-from typing import Any, Optional
+from dataclasses import dataclass
+from typing import Any
 
 import httpx
 
@@ -37,7 +37,7 @@ ROLE_RETRY_BACKOFF = float(os.environ.get("AGENT_RETRY_BACKOFF", "1.5"))
 ROLE_REQUEST_TIMEOUT = float(os.environ.get("AGENT_REQUEST_TIMEOUT", "300.0"))
 
 # Последняя ошибка провайдера по каждой роли (для одинаковых оповещений в UI).
-_last_role_errors: dict[str, Optional[str]] = {"classifier": None, "editor": None}
+_last_role_errors: dict[str, str | None] = {"classifier": None, "editor": None}
 
 # Роли, остановленные пользователем (выключен переключатель). Пока роль в
 # этом множестве, новые запросы к её провайдеру отклоняются мгновенно —
@@ -56,7 +56,7 @@ def resume_role(role: str) -> None:
     _stopped_roles.discard(role)
 
 
-def last_provider_error(role: str = "classifier") -> Optional[str]:
+def last_provider_error(role: str = "classifier") -> str | None:
     """Последняя ошибка обращения к провайдеру роли (роль — та же логика,
     те же тексты ошибок для классификатора и редактора)."""
     return _last_role_errors.get(role)
@@ -72,14 +72,14 @@ class ProviderCallResult:
     """Единый результат обращения к модели для обеих ролей."""
 
     ok: bool
-    content: Optional[str]
-    error: Optional[str]
+    content: str | None
+    error: str | None
     provider_name: str
     model: str
     url: str
     attempts: int = 0
     aborted: bool = False
-    status_code: Optional[int] = None
+    status_code: int | None = None
 
     @classmethod
     def failure(
@@ -91,8 +91,8 @@ class ProviderCallResult:
         error: str,
         attempts: int = 0,
         aborted: bool = False,
-        status_code: Optional[int] = None,
-    ) -> "ProviderCallResult":
+        status_code: int | None = None,
+    ) -> ProviderCallResult:
         return cls(
             ok=False,
             content=None,
@@ -164,7 +164,7 @@ def _response_error(response: httpx.Response) -> str:
     return f"HTTP {response.status_code}: провайдер вернул ошибку"
 
 
-def _message_content(data: Any) -> Optional[str]:
+def _message_content(data: Any) -> str | None:
     """Извлечь текст из стандартного OpenAI-совместимого ответа."""
     try:
         message = data["choices"][0]["message"]
@@ -292,7 +292,7 @@ class ProviderClient:
 
         attempts = max(0, int(retries)) + 1
         last_error = "неизвестная ошибка"
-        last_status: Optional[int] = None
+        last_status: int | None = None
 
         for attempt in range(attempts):
             client: httpx.Client | None = None

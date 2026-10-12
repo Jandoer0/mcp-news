@@ -130,27 +130,29 @@ export async function refreshVisiblePosts() {
   if (!els.length) return;
   const ids = els.map((el) => el.dataset.id).filter((id) => id != null);
   if (!ids.length) return;
+  let data;
   try {
-    const ed = await api("/api/posts/editor?ids=" + ids.join(","));
-    for (const el of els) {
-      const st = ed[el.dataset.id];
-      if (!st) continue;
+    // Один запрос вместо двух: состояние редактора + теги тем.
+    data = await api("/api/posts/state?ids=" + ids.join(","));
+  } catch (_e) {
+    return;
+  }
+  const ed = data.editor || {};
+  const tg = data.tags || {};
+  for (const el of els) {
+    const st = ed[el.dataset.id];
+    if (st) {
       const justEdited = applyPostEditorState(el, el.dataset.id, st);
       if (justEdited) {
         const tag = el.querySelector(".editortag");
         if (tag) flashFx(tag, "fx-edit");
       }
     }
-  } catch (_e) {}
-  try {
-    const tg = await api("/api/posts/tags?ids=" + ids.join(","));
-    for (const el of els) {
-      const tags = tg[el.dataset.id] || [];
-      state.postTags[el.dataset.id] = tags;
-      const freshChips = applyPostTags(el, tags, true);
-      for (const c of freshChips) flashFx(c, "fx-tag");
-    }
-  } catch (_e) {}
+    const tags = tg[el.dataset.id] || [];
+    state.postTags[el.dataset.id] = tags;
+    const freshChips = applyPostTags(el, tags, true);
+    for (const c of freshChips) flashFx(c, "fx-tag");
+  }
 }
 
 const _fxTimers = new WeakMap();
@@ -350,12 +352,25 @@ export function initPosts() {
   });
 
   // Живой опрос карточек видимых постов (редакция ИИ / теги классификатора),
-  // пока открыта вкладка «Лента новостей».
+  // пока открыта вкладка «Лента новостей». Адаптивный интервал: 3 с, когда
+  // работает ИИ (переключатель включён или пост в статусе «editing»),
+  // 10 с в остальное время; при скрытой вкладке опрос останавливается.
   if (!_postsPollStarted) {
     _postsPollStarted = true;
-    setInterval(() => {
+    let _lastPoll = 0;
+    setInterval(async () => {
+      if (document.hidden) return;
       const tab = document.getElementById("tab-posts");
-      if (tab && !tab.classList.contains("hidden")) refreshVisiblePosts();
+      if (!tab || tab.classList.contains("hidden")) return;
+      const busy =
+        $("#classifier-toggle")?.checked ||
+        $("#editor-toggle")?.checked ||
+        !!document.querySelector(".post .editortag.editing");
+      const now = Date.now();
+      // Пока ИИ работает — 3 с; в покое — раз в 10 с.
+      if (!busy && now - _lastPoll < 10000) return;
+      _lastPoll = now;
+      await refreshVisiblePosts();
     }, 3000);
   }
 }

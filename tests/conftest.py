@@ -1,5 +1,6 @@
 """Общая настройка тестов: изолированная БД и конфиг в temp-каталоге."""
 import os
+import sqlite3
 
 import pytest
 
@@ -33,6 +34,12 @@ def _clean_db():
     conn.execute("DELETE FROM posts")
     conn.execute("DELETE FROM topics")
     conn.execute("DELETE FROM sources")
+    # AUTOINCREMENT-счётчики тоже сбрасываем, иначе в полном прогоне id
+    # продолжают расти и тесты, ожидающие конкретный id, ломаются.
+    try:
+        conn.execute("DELETE FROM sqlite_sequence")
+    except sqlite3.OperationalError:
+        pass  # таблица ещё не создана (нет ни одной вставки)
     conn.commit()
     conn.close()
 

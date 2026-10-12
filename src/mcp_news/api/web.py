@@ -24,6 +24,7 @@ from ..db import (
     get_posts,
     get_posts_by_tag,
     get_posts_by_tags,
+    get_posts_editor_status,
     get_source,
     list_sources,
 )
@@ -211,18 +212,11 @@ async def api_posts_tags(request: Request) -> JSONResponse:
 
     query: ?ids=1,2,3  →  {"1": [{"name", "tag"}], ...}
     """
-    raw = request.query_params.get("ids", "").strip()
-    if not raw:
-        return JSONResponse({})
-    ids = []
-    for part in raw.split(","):
-        part = part.strip()
-        if part.isdigit():
-            ids.append(int(part))
-    if not ids:
-        return JSONResponse({})
     from ..db import get_post_topics
 
+    ids = _parse_ids(request)
+    if not ids:
+        return JSONResponse({})
     mapping = get_post_topics(ids)
     return JSONResponse({str(k): v for k, v in mapping.items()})
 
@@ -232,19 +226,39 @@ async def api_posts_editor(request: Request) -> JSONResponse:
 
     query: ?ids=1,2,3  →  {"1": {"status", "active", "has_edited"}, ...}
     """
-    raw = request.query_params.get("ids", "").strip()
-    if not raw:
-        return JSONResponse({})
-    ids = []
-    for part in raw.split(","):
-        part = part.strip()
-        if part.isdigit():
-            ids.append(int(part))
+    return JSONResponse(await _posts_state_part(request, get_posts_editor_status))
+
+
+async def api_posts_state(request: Request) -> JSONResponse:
+    """Единый опрос живых данных постов: ИИ-редактор + теги тем.
+
+    query: ?ids=1,2,3  →  {"editor": {"1": {...}}, "tags": {"1": [...]}}
+    Один запрос вместо двух — фронтовый поллинг (каждые 3 с) режет
+    число обращений к API и БД вдвое.
+    """
+    from ..db import get_post_topics
+
+    ids = _parse_ids(request)
     if not ids:
         return JSONResponse({})
-    from ..db import get_posts_editor_status
+    return JSONResponse({
+        "editor": get_posts_editor_status(ids),
+        "tags": {str(k): v for k, v in get_post_topics(ids).items()},
+    })
 
-    return JSONResponse(get_posts_editor_status(ids))
+
+def _parse_ids(request: Request) -> list[int]:
+    raw = request.query_params.get("ids", "").strip()
+    if not raw:
+        return []
+    return [int(p) for p in (s.strip() for s in raw.split(",")) if p.isdigit()]
+
+
+async def _posts_state_part(request: Request, fetch):
+    ids = _parse_ids(request)
+    if not ids:
+        return {}
+    return fetch(ids)
 
 
 async def api_editor_run(request: Request) -> JSONResponse:
@@ -398,7 +412,7 @@ async def api_config(request: Request) -> JSONResponse:
     data = await _json(request, default={})
     cfg = load_config()
     cur = cfg.to_legacy_dict()
-    
+
     # Сохранение классификатора (мердж провайдера: compat-флаги не теряются,
     # если их не прислали — та же логика, что у редактора)
     if "classifier" in data:
@@ -408,7 +422,7 @@ async def api_config(request: Request) -> JSONResponse:
                 cur["classifier"]["provider"].update(c_data["provider"])
             if c_data.get("model") is not None:
                 cur["classifier"]["model"] = c_data["model"]
-    
+
     # Сохранение редактора (симметрично классификатору)
     if "editor" in data:
         e_data = data["editor"]
@@ -436,15 +450,18 @@ async def api_config(request: Request) -> JSONResponse:
 
     if "timezone" in data:
         cur["timezone"] = data["timezone"] or ""
-        
+
     sched = data.get("schedule")
     if isinstance(sched, dict):
         cur.setdefault("schedule", {})
         for sk, sv in sched.items():
-            if sv in (None, ""): continue
-            try: cur["schedule"][sk] = int(sv)
-            except (TypeError, ValueError): cur["schedule"][sk] = sv
-            
+            if sv in (None, ""):
+                continue
+            try:
+                cur["schedule"][sk] = int(sv)
+            except (TypeError, ValueError):
+                cur["schedule"][sk] = sv
+
     try:
         new_cfg = AppConfig.from_legacy_dict(cur)
         save_config(new_cfg)

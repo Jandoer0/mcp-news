@@ -1,15 +1,13 @@
 """Парсинг постов Telegram-каналов через публичный виджет t.me/s/<канал>."""
 from __future__ import annotations
 
-from typing import Optional
-
 import httpx
 from bs4 import BeautifulSoup
 
 BASE_URL = "https://t.me/s"
 
 
-def fetch_page(channel: str, before: Optional[int] = None) -> str:
+def fetch_page(channel: str, before: int | None = None) -> str:
     url = f"{BASE_URL}/{channel}"
     params = {}
     if before is not None:

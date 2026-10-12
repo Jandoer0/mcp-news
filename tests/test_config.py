@@ -100,3 +100,33 @@ def test_from_legacy_flat_roles():
     assert cfg.classifier.model == "old-c"
     assert cfg.editor.provider.base_url == "https://old/v1"
     assert cfg.editor.model == "old-e"
+
+
+def test_load_config_cache_invalidated_by_file_change(tmp_path, monkeypatch):
+    """Кэш по содержимому: изменение config.json (и env) подхватывается сразу."""
+    import mcp_news.config as config_mod
+
+    cfg_path = tmp_path / "config.json"
+    monkeypatch.setattr(config_mod, "CONFIG_PATH", str(cfg_path))
+    monkeypatch.delenv("AGENT_EDITOR_MODEL", raising=False)
+
+    # 1. Первый прогон — файл с одной моделью редактора
+    cfg_path.write_text(
+        '{"editor": {"provider": {"baseUrl": "http://x/v1"}, "model": "m1"}}',
+        encoding="utf-8",
+    )
+    cfg = load_config()
+    assert cfg.editor.model == "m1"
+
+    # 2. Файл изменился без перезапуска — кэш должен обновиться
+    cfg_path.write_text(
+        '{"editor": {"provider": {"baseUrl": "http://x/v1"}, "model": "m2"}}',
+        encoding="utf-8",
+    )
+    cfg = load_config()
+    assert cfg.editor.model == "m2"
+
+    # 3. Изменение env при неизменном файле — тоже учитывается кэшем
+    monkeypatch.setenv("AGENT_EDITOR_MODEL", "m3")
+    cfg = load_config()
+    assert cfg.editor.model == "m3"

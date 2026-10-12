@@ -5,8 +5,6 @@
 """
 from __future__ import annotations
 
-from typing import Optional
-
 from ..db import (
     add_topic,
     exclude_post,
@@ -14,9 +12,11 @@ from ..db import (
     get_topic,
     list_topics,
     remove_topic,
-    reset_exclusions,
     set_topic_active,
     tag_post,
+)
+from ..db import (
+    reset_exclusions as _reset_exclusions_repo,
 )
 from . import agent
 from .engine import get_chronology
@@ -43,14 +43,14 @@ def set_active(name: str, active: bool) -> bool:
     return set_topic_active(name, active)
 
 
-def reset_exclusions(name: str, post_id: Optional[int] = None) -> int:
+def reset_exclusions(name: str, post_id: int | None = None) -> int:
     topic = get_topic(name)
     if not topic:
         return 0
-    return reset_exclusions(topic["id"], post_id)
+    return _reset_exclusions_repo(topic["id"], post_id)
 
 
-def add_post_manual(name: str, post_id: int) -> Optional[dict]:
+def add_post_manual(name: str, post_id: int) -> dict | None:
     """Ручное добавление поста из ленты в тему (mode='manual')."""
     topic = get_topic(name)
     if not topic:
@@ -66,7 +66,7 @@ def remove_post(name: str, post_id: int) -> bool:
     return exclude_post(topic["id"], int(post_id))
 
 
-def get_topic_detail(name: str, limit: int = 200) -> Optional[dict]:
+def get_topic_detail(name: str, limit: int = 200) -> dict | None:
     topic = get_topic(name)
     if not topic:
         return None
@@ -75,7 +75,7 @@ def get_topic_detail(name: str, limit: int = 200) -> Optional[dict]:
     return {"topic": topic, "total": total, "posts": posts}
 
 
-def run_agent(name: str, max_batches: Optional[int] = None) -> dict:
+def run_agent(name: str, max_batches: int | None = None) -> dict:
     topic = get_topic(name)
     if not topic:
         return {"error": "тема не найдена"}

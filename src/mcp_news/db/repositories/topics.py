@@ -1,8 +1,6 @@
 """Репозиторий «Мои темы»: темы, их хронология (posts_tags) и исключения."""
 from __future__ import annotations
 
-from typing import Optional
-
 from ..connection import get_conn
 
 
@@ -49,7 +47,7 @@ def add_topic(
     return {"ok": True, **dict(row)}
 
 
-def get_topic(name: str) -> Optional[dict]:
+def get_topic(name: str) -> dict | None:
     name = _norm(name)
     conn = get_conn()
     row = conn.execute("SELECT * FROM topics WHERE name = ?", (name,)).fetchone()
@@ -57,7 +55,7 @@ def get_topic(name: str) -> Optional[dict]:
     return dict(row) if row else None
 
 
-def get_topic_by_id(topic_id: int) -> Optional[dict]:
+def get_topic_by_id(topic_id: int) -> dict | None:
     conn = get_conn()
     row = conn.execute("SELECT * FROM topics WHERE id = ?", (topic_id,)).fetchone()
     conn.close()
@@ -101,9 +99,9 @@ def set_topic_active(name: str, active: bool) -> bool:
     return cur.rowcount > 0
 
 
-def update_topic_run(topic_id: int, last_post_id: Optional[int] = None) -> None:
+def update_topic_run(topic_id: int, last_post_id: int | None = None) -> None:
     import datetime
-    now_iso = datetime.datetime.now(datetime.timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
+    now_iso = datetime.datetime.now(datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")
     conn = get_conn()
     if last_post_id is not None:
         conn.execute(
@@ -118,7 +116,7 @@ def update_topic_run(topic_id: int, last_post_id: Optional[int] = None) -> None:
     conn.close()
 
 
-def tag_post(topic_id: int, post_id: int, mode: str = "ai") -> Optional[dict]:
+def tag_post(topic_id: int, post_id: int, mode: str = "ai") -> dict | None:
     """Присвоить посту тег темы (mode='ai' — ИИ-агент, 'manual' — вручную)."""
     conn = get_conn()
     try:
