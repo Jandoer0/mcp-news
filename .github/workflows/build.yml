@@ -33,9 +33,10 @@ jobs:
 
       - name: Run tests
         run: |
-          pip install -q -e .[dev]
-          ruff check src tests
-          pytest -q
+          python3 -m venv .venv-ci
+          .venv-ci/bin/pip install -q -e .[dev]
+          .venv-ci/bin/ruff check src tests
+          .venv-ci/bin/pytest -q
 
       - name: Build and push
         uses: docker/build-push-action@v6
